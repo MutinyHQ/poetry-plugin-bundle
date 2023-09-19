@@ -26,15 +26,27 @@ class BundleVenvCommand(BundleCommand):
         option(
             "python",
             "p",
-            "The Python executable to use to create the virtual environment. "
-            "Defaults to the current Python executable",
+            (
+                "The Python executable to use to create the virtual environment. "
+                "Defaults to the current Python executable"
+            ),
             flag=False,
             value_required=True,
         ),
         option(
             "clear",
             None,
-            "Clear the existing virtual environment if it exists. ",
+            "Clear the existing virtual environment if it exists.",
+            flag=True,
+        ),
+        option(
+            "develop-false",
+            None,
+            (
+                "Copy symlinked dependencies marked as develop = true in the virtual "
+                "environment as if the dependencies were instead marked as develop = "
+                "false"
+            ),
             flag=True,
         ),
     ]
@@ -45,4 +57,5 @@ class BundleVenvCommand(BundleCommand):
         bundler.set_path(Path(self.argument("path")))
         bundler.set_executable(self.option("python"))
         bundler.set_remove(self.option("clear"))
+        bundler.set_no_develop(self.option("develop-false"))
         bundler.set_activated_groups(self.activated_groups)

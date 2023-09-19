@@ -8,6 +8,7 @@ from subprocess import CalledProcessError
 from typing import TYPE_CHECKING
 
 from poetry_plugin_bundle.bundlers.bundler import Bundler
+from poetry_plugin_bundle.packages.develop_false_locker import DevelopFalseLocker
 
 
 if TYPE_CHECKING:
@@ -24,6 +25,7 @@ class VenvBundler(Bundler):
         self._path: Path
         self._executable: str | None = None
         self._remove: bool = False
+        self._no_develop: bool = False
         self._activated_groups: set[str] | None = None
 
     def set_path(self, path: Path) -> VenvBundler:
@@ -43,6 +45,11 @@ class VenvBundler(Bundler):
 
     def set_remove(self, remove: bool = True) -> VenvBundler:
         self._remove = remove
+
+        return self
+
+    def set_no_develop(self, no_develop=True) -> VenvBundler:
+        self._no_develop = no_develop
 
         return self
 
@@ -96,8 +103,10 @@ class VenvBundler(Bundler):
 
                 self._write(
                     io,
-                    f"{message}: <info>Creating a virtual environment using Python"
-                    f" <b>{python_version}</b></info>",
+                    (
+                        f"{message}: <info>Creating a virtual environment using Python"
+                        f" <b>{python_version}</b></info>"
+                    ),
                 )
 
                 manager.build_venv(self._path, executable=executable)
@@ -108,8 +117,10 @@ class VenvBundler(Bundler):
         else:
             self._write(
                 io,
-                f"{message}: <info>Creating a virtual environment using Python"
-                f" <b>{python_version}</b></info>",
+                (
+                    f"{message}: <info>Creating a virtual environment using Python"
+                    f" <b>{python_version}</b></info>"
+                ),
             )
 
             manager.build_venv(self._path, executable=executable)
@@ -118,11 +129,14 @@ class VenvBundler(Bundler):
 
         self._write(io, f"{message}: <info>Installing dependencies</info>")
 
+        locker = (
+            DevelopFalseLocker(poetry.locker) if self._no_develop else poetry.locker
+        )
         installer = Installer(
             NullIO() if not io.is_debug() else io,
             env,
             poetry.package,
-            poetry.locker,
+            locker,
             poetry.pool,
             poetry.config,
         )
@@ -141,8 +155,10 @@ class VenvBundler(Bundler):
 
         self._write(
             io,
-            f"{message}: <info>Installing <c1>{poetry.package.pretty_name}</c1>"
-            f" (<b>{poetry.package.pretty_version}</b>)</info>",
+            (
+                f"{message}: <info>Installing <c1>{poetry.package.pretty_name}</c1>"
+                f" (<b>{poetry.package.pretty_version}</b>)</info>"
+            ),
         )
 
         # Build a wheel of the project in a temporary directory

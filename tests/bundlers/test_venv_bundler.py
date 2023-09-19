@@ -268,3 +268,84 @@ def test_bundler_can_filter_dependency_groups(
   • Bundled simple-project (1.2.3) into {path}
 """  # noqa: E501
     assert expected == io.fetch_output()
+
+
+def test_bundler_installs_develop_dependencies(
+    io: BufferedIO, tmpdir: str, poetry: Poetry, mocker: MockerFixture, config: Config
+) -> None:
+    poetry = Factory().create_poetry(
+        Path(__file__).parent.parent
+        / "fixtures"
+        / "simple_project_with_develop_dep_in_lockfile"
+    )
+    poetry.set_config(config)
+    execute_operation_stub = mocker.patch(
+        "poetry.installation.executor.Executor._execute_operation"
+    )
+    bundler = VenvBundler()
+    bundler.set_path(Path(tmpdir))
+    bundler.set_remove(True)
+
+    io.clear_output()
+
+    assert bundler.bundle(poetry, io)
+    matching_calls = [
+        call
+        for call in execute_operation_stub.mock_calls
+        if call.args[0].package.name == "foo"
+    ]
+    assert len(matching_calls)
+    assert matching_calls[0].args[0].package.develop == True
+
+    path = tmpdir
+    python_version = ".".join(str(v) for v in sys.version_info[:3])
+    expected = f"""\
+  • Bundling simple-project (1.2.3) into {path}
+  • Bundling simple-project (1.2.3) into {path}: Removing existing virtual environment
+  • Bundling simple-project (1.2.3) into {path}: Creating a virtual environment using Python {python_version}
+  • Bundling simple-project (1.2.3) into {path}: Installing dependencies
+  • Bundling simple-project (1.2.3) into {path}: Installing simple-project (1.2.3)
+  • Bundled simple-project (1.2.3) into {path}
+"""  # noqa: E501
+    assert expected == io.fetch_output()
+
+
+def test_bundler_installs_develop_dependencies_as_develop_false(
+    io: BufferedIO, tmpdir: str, poetry: Poetry, mocker: MockerFixture, config: Config
+) -> None:
+    poetry = Factory().create_poetry(
+        Path(__file__).parent.parent
+        / "fixtures"
+        / "simple_project_with_develop_dep_in_lockfile"
+    )
+    poetry.set_config(config)
+    execute_operation_stub = mocker.patch(
+        "poetry.installation.executor.Executor._execute_operation"
+    )
+    bundler = VenvBundler()
+    bundler.set_path(Path(tmpdir))
+    bundler.set_remove(True)
+    bundler.set_no_develop(True)
+
+    io.clear_output()
+
+    assert bundler.bundle(poetry, io)
+    matching_calls = [
+        call
+        for call in execute_operation_stub.mock_calls
+        if call.args[0].package.name == "foo"
+    ]
+    assert len(matching_calls)
+    assert matching_calls[0].args[0].package.develop == False
+
+    path = tmpdir
+    python_version = ".".join(str(v) for v in sys.version_info[:3])
+    expected = f"""\
+  • Bundling simple-project (1.2.3) into {path}
+  • Bundling simple-project (1.2.3) into {path}: Removing existing virtual environment
+  • Bundling simple-project (1.2.3) into {path}: Creating a virtual environment using Python {python_version}
+  • Bundling simple-project (1.2.3) into {path}: Installing dependencies
+  • Bundling simple-project (1.2.3) into {path}: Installing simple-project (1.2.3)
+  • Bundled simple-project (1.2.3) into {path}
+"""  # noqa: E501
+    assert expected == io.fetch_output()
